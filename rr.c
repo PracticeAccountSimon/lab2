@@ -21,6 +21,7 @@ struct process
   TAILQ_ENTRY(process) pointers;
 
   /* Additional fields here */
+  u32 original_burst_time; // Used to calculate waiting time
   bool found; // Has a process already started? (useful for response time)
   /* End of "Additional fields here" */
 };
@@ -164,20 +165,24 @@ int main(int argc, char *argv[])
   u32 cur_time = data[0].arrival_time; // Tracks the earliest start time
 
   for (u32 i = 0; i < size; i++) {
-    data[i].found = false; // Default value 
+    data[i].found = false; // Process hasn't started 
+    data[i].original_burst_time = data[i].burst_time;
     cur_time = min(cur_time, data[i].arrival_time);
   }
 
+  u32 total_time = 0; // Time used by all processes combined
   u32 process_time = 0; // Time used by the current process
-  u32 total_time = 0; // Time used by all proccesses combined
   u32 processes_queued = 0;
 
-  // This loop should run until all processes are complete
+  // This loop should run until all processes are complete.
+  // Each iteration represents one quanta, unless we're doing a context switch.
   while (processes_queued < size || !TAILQ_EMPTY(&list)) {
-    // Add newly arrive processes to the linked list 
+    // Add newly arrived processes to the linked list 
     for (u32 i = 0; i < size; i++)
-      if (data[i].arrival_time == cur_time)
+      if (data[i].arrival_time == cur_time) {
         TAILQ_INSERT_TAIL(&list, &data[i], pointers);
+        processes_queued++;
+      }
 
     // There are no processes operating at the moment
     if (TAILQ_EMPTY(&list)) {
@@ -186,7 +191,34 @@ int main(int argc, char *argv[])
       process_time = 0;
     }
 
-    
+    struct process* cur_process = TAILQ_FIRST(&list);
+
+    // Measure response time if applicable
+    if (!cur_process->found) {
+      total_response_time += cur_time-cur_process->arrival_time;
+      cur_process->found = true;
+    }
+
+    // If a process has completed, remove it from the queue
+    if (cur_process->burst_time == 0) {
+      total_waiting_time += cur_time-cur_process->arrival_time-cur_process->original_burst_time;
+      TAILQ_REMOVE(&list, cur_process, pointers);
+    }
+
+    // If a process has used up its quantum, place it at the back of the queue
+    else if (process_time == quantum_length) {
+      TAILQ_REMOVE(&list, cur_process, pointers);
+      TAILQ_INSERT_TAIL(&list, cur_process, pointers);
+    }
+
+    // We only increase time measurements if the current process is actively running,
+    // i.e. it has not completed or used up its quantum. Otherwise, we're scheduling.
+    else {
+      cur_time++;
+      total_time++;
+      process_time++;
+      cur_process->burst_time--;
+    }
   }
 
   /* End of "Your code here" */
