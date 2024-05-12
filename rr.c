@@ -21,6 +21,7 @@ struct process
   TAILQ_ENTRY(process) pointers;
 
   /* Additional fields here */
+  bool found; // Has a process already started? (useful for response time)
   /* End of "Additional fields here" */
 };
 
@@ -160,7 +161,34 @@ int main(int argc, char *argv[])
   u32 total_response_time = 0;
 
   /* Your code here */
-  
+  u32 cur_time = data[0].arrival_time; // Tracks the earliest start time
+
+  for (u32 i = 0; i < size; i++) {
+    data[i].found = false; // Default value 
+    cur_time = min(cur_time, data[i].arrival_time);
+  }
+
+  u32 process_time = 0; // Time used by the current process
+  u32 total_time = 0; // Time used by all proccesses combined
+  u32 processes_queued = 0;
+
+  // This loop should run until all processes are complete
+  while (processes_queued < size || !TAILQ_EMPTY(&list)) {
+    // Add newly arrive processes to the linked list 
+    for (u32 i = 0; i < size; i++)
+      if (data[i].arrival_time == cur_time)
+        TAILQ_INSERT_TAIL(&list, &data[i], pointers);
+
+    // There are no processes operating at the moment
+    if (TAILQ_EMPTY(&list)) {
+      cur_time++;
+      total_time++;
+      process_time = 0;
+    }
+
+    
+  }
+
   /* End of "Your code here" */
 
   printf("Average waiting time: %.2f\n", (float)total_waiting_time / (float)size);
