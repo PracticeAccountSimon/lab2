@@ -167,12 +167,14 @@ int main(int argc, char *argv[])
   for (u32 i = 0; i < size; i++) {
     data[i].found = false; // Process hasn't started 
     data[i].original_burst_time = data[i].burst_time;
-    cur_time = min(cur_time, data[i].arrival_time);
+
+    // The "min" function wasn't working and I'm too lazy to fix it
+    if (data[i].arrival_time < cur_time) 
+      cur_time = data[i].arrival_time;
   }
 
-  u32 total_time = 0; // Time used by all processes combined
   u32 process_time = 0; // Time used by the current process
-  u32 processes_queued = 0;
+  u32 processes_queued = 0; // Number of processes ready to run
 
   // This loop should run until all processes are complete.
   // Each iteration represents one quanta, unless we're doing a context switch.
@@ -187,7 +189,6 @@ int main(int argc, char *argv[])
     // There are no processes operating at the moment
     if (TAILQ_EMPTY(&list)) {
       cur_time++;
-      total_time++;
       process_time = 0;
     }
 
@@ -203,24 +204,24 @@ int main(int argc, char *argv[])
     if (cur_process->burst_time == 0) {
       total_waiting_time += cur_time-cur_process->arrival_time-cur_process->original_burst_time;
       TAILQ_REMOVE(&list, cur_process, pointers);
+      process_time = 0;
     }
 
     // If a process has used up its quantum, place it at the back of the queue
     else if (process_time == quantum_length) {
       TAILQ_REMOVE(&list, cur_process, pointers);
       TAILQ_INSERT_TAIL(&list, cur_process, pointers);
+      process_time = 0;
     }
 
     // We only increase time measurements if the current process is actively running,
     // i.e. it has not completed or used up its quantum. Otherwise, we're scheduling.
     else {
       cur_time++;
-      total_time++;
       process_time++;
       cur_process->burst_time--;
     }
   }
-
   /* End of "Your code here" */
 
   printf("Average waiting time: %.2f\n", (float)total_waiting_time / (float)size);
