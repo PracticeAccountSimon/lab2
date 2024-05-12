@@ -1,28 +1,28 @@
 # You Spin Me Round Robin
 
-TODO
+This program simulates round-robin scheduling on a text file.
 
 ## Building
 
 ```shell
-TODO
+make
 ```
 
 ## Running
 
-cmd for running TODO
+cmd for running
 ```shell
-TODO
+./rr tasks.txt quantum
 ```
 
-results TODO
+results 
 ```shell
-TODO
+Sample text file and all test cases passed.
 
 ```
 
 ## Cleaning up
 
 ```shell
-TODO
+make clean
 ```
