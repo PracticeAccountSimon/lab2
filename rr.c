@@ -23,6 +23,7 @@ struct process
   /* Additional fields here */
   u32 original_burst_time; // Used to calculate waiting time
   bool found; // Has a process already started? (useful for response time)
+  bool scheduled; // Has the task been scheduled yet?
   /* End of "Additional fields here" */
 };
 
@@ -166,6 +167,7 @@ int main(int argc, char *argv[])
 
   for (u32 i = 0; i < size; i++) {
     data[i].found = false; // Process hasn't started 
+    data[i].scheduled = false; // Process hasn't been scheduled
     data[i].original_burst_time = data[i].burst_time;
 
     // The "min" function wasn't working and I'm too lazy to fix it
@@ -180,16 +182,19 @@ int main(int argc, char *argv[])
   // Each iteration represents one quanta, unless we're doing a context switch.
   while (processes_queued < size || !TAILQ_EMPTY(&list)) {
     // Add newly arrived processes to the linked list 
-    for (u32 i = 0; i < size; i++)
-      if (data[i].arrival_time == cur_time) {
+    for (u32 i = 0; i < size; i++) {
+      if (data[i].arrival_time == cur_time && !data[i].scheduled) {
+        data[i].scheduled = true;
         TAILQ_INSERT_TAIL(&list, &data[i], pointers);
         processes_queued++;
       }
-
+    }
+    
     // There are no processes operating at the moment
     if (TAILQ_EMPTY(&list)) {
       cur_time++;
       process_time = 0;
+      continue;
     }
 
     struct process* cur_process = TAILQ_FIRST(&list);
